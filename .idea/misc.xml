@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="Black">
+<<<<<<< HEAD
+    <option name="sdkName" value="Python 3.12 (KPOI)" />
+  </component>
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.12 (KPOI)" project-jdk-type="Python SDK" />
+=======
     <option name="sdkName" value="Python 3.13 (PyCharmMiscProject)" />
   </component>
   <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.13 (PyCharmMiscProject)" project-jdk-type="Python SDK" />
+>>>>>>> 642170420739d17e419d7dac19be35d18a60b5e4
 </project>
