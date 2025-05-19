@@ -1,9 +1,13 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import openai
+import os
+
+# --------- إعداد مفتاح OpenAI ---------
+openai.api_key = st.secrets["OPENAI_API_KEY"] if "OPENAI_API_KEY" in st.secrets else os.getenv("OPENAI_API_KEY")
 
 # --------- تسجيل الدخول ---------
-
 def show_login():
     st.title("🔐 نظام الدخول - Kidana Insights AI")
     st.markdown("يرجى تسجيل الدخول للمتابعة")
@@ -19,7 +23,6 @@ def show_login():
             st.error("اسم المستخدم أو كلمة المرور غير صحيحة ❌")
 
 # --------- كود النظام الأساسي ---------
-
 def main():
     st.set_page_config(page_title="Kidana Insights AI", layout="wide")
 
@@ -70,10 +73,9 @@ def main():
             if "نوع_الخدمة" in df.columns:
                 st.markdown("### 🔎 تم التعرف على ملف بلاغات تشغيلية")
 
-                if "نوع_الخدمة" in df.columns:
-                    st.subheader("🔧 عدد البلاغات حسب نوع الخدمة")
-                    fig_service = px.histogram(df, x="نوع_الخدمة", color="نوع_الخدمة", title="عدد البلاغات حسب نوع الخدمة")
-                    st.plotly_chart(fig_service, use_container_width=True)
+                st.subheader("🔧 عدد البلاغات حسب نوع الخدمة")
+                fig_service = px.histogram(df, x="نوع_الخدمة", color="نوع_الخدمة", title="عدد البلاغات حسب نوع الخدمة")
+                st.plotly_chart(fig_service, use_container_width=True)
 
                 if "الموقع" in df.columns:
                     st.subheader("📍 عدد البلاغات حسب الموقع")
@@ -119,12 +121,37 @@ def main():
                                       title="تكرار KPIs حسب Frequency")
                     st.plotly_chart(fig_freq, use_container_width=True)
 
-            else:
-                st.warning("⚠️ الملف غير معروف، لم يتم التعرف على نوع البيانات")
+            # --------- المساعد الذكي ---------
+            with st.expander("🧠 مساعد ذكي (GPT)"):
+                st.markdown("**📌 اسأل عن البيانات بأي صيغة وسأجيب باستخدام الذكاء الاصطناعي 👇**")
+                user_question = st.text_area("✍️ اكتب سؤالك هنا:")
+
+                if st.button("تحليل بالسؤال") and user_question:
+                    try:
+                        sampled_df = df.sample(n=min(100, len(df)), random_state=42)
+                        context = sampled_df.to_markdown(index=False)
+                        prompt = f"""
+                        جاوب على السؤال التالي بناءً على الجدول التالي:
+
+                        {context}
+
+                        السؤال: {user_question}
+                        """
+
+                        response = openai.ChatCompletion.create(
+                            model="gpt-3.5-turbo",
+                            messages=[
+                                {"role": "system", "content": "أنت مساعد بيانات ذكي تحلل الجداول وتشرح النتائج بدقة"},
+                                {"role": "user", "content": prompt}
+                            ]
+                        )
+                        answer = response.choices[0].message.content
+                        st.markdown(f"**📌 الإجابة:**\n\n{answer}")
+                    except Exception as e:
+                        st.error(f"❌ حدث خطأ في المساعد الذكي:\n\n{str(e)}")
 
         except Exception as e:
             st.error(f"❌ حدث خطأ أثناء معالجة البيانات: {str(e)}")
-
     else:
         st.warning("📌 الرجاء رفع ملف البيانات لبدء التحليل.")
 
