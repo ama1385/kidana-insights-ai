@@ -1,11 +1,10 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import openai
+from openai import OpenAI
 import os
+from tabulate import tabulate
 
-# --------- إعداد مفتاح OpenAI ---------
-openai.api_key = st.secrets["OPENAI_API_KEY"] if "OPENAI_API_KEY" in st.secrets else os.getenv("OPENAI_API_KEY")
 
 # --------- تسجيل الدخول ---------
 def show_login():
@@ -21,6 +20,7 @@ def show_login():
             st.success("تم تسجيل الدخول بنجاح ✅")
         else:
             st.error("اسم المستخدم أو كلمة المرور غير صحيحة ❌")
+
 
 # --------- كود النظام الأساسي ---------
 def main():
@@ -65,17 +65,17 @@ def main():
                 df = pd.read_excel(uploaded_file, engine="openpyxl")
 
             st.success("✅ تم تحميل البيانات بنجاح!")
-
             st.subheader("📋 نظرة عامة على البيانات")
             st.dataframe(df)
 
-            # التعرف التلقائي على نوع التحليل بناءً على الأعمدة:
             if "نوع_الخدمة" in df.columns:
                 st.markdown("### 🔎 تم التعرف على ملف بلاغات تشغيلية")
 
-                st.subheader("🔧 عدد البلاغات حسب نوع الخدمة")
-                fig_service = px.histogram(df, x="نوع_الخدمة", color="نوع_الخدمة", title="عدد البلاغات حسب نوع الخدمة")
-                st.plotly_chart(fig_service, use_container_width=True)
+                if "نوع_الخدمة" in df.columns:
+                    st.subheader("🔧 عدد البلاغات حسب نوع الخدمة")
+                    fig_service = px.histogram(df, x="نوع_الخدمة", color="نوع_الخدمة",
+                                               title="عدد البلاغات حسب نوع الخدمة")
+                    st.plotly_chart(fig_service, use_container_width=True)
 
                 if "الموقع" in df.columns:
                     st.subheader("📍 عدد البلاغات حسب الموقع")
@@ -84,7 +84,8 @@ def main():
 
                 if "مستوى_الخطورة" in df.columns:
                     st.subheader("🚨 عدد البلاغات حسب مستوى الخطورة")
-                    fig_severity = px.histogram(df, x="مستوى_الخطورة", color="مستوى_الخطورة", title="عدد البلاغات حسب مستوى الخطورة")
+                    fig_severity = px.histogram(df, x="مستوى_الخطورة", color="مستوى_الخطورة",
+                                                title="عدد البلاغات حسب مستوى الخطورة")
                     st.plotly_chart(fig_severity, use_container_width=True)
 
                 if "الحالة" in df.columns and "مدة_الحل_ساعة" in df.columns:
@@ -128,32 +129,35 @@ def main():
 
                 if st.button("تحليل بالسؤال") and user_question:
                     try:
-                        sampled_df = df.sample(n=min(100, len(df)), random_state=42)
-                        context = sampled_df.to_markdown(index=False)
+                        sampled_df = df.sample(n=min(200, len(df)), random_state=42)
+                        context = tabulate(sampled_df, headers='keys', tablefmt='grid', showindex=False)
+
                         prompt = f"""
-                        جاوب على السؤال التالي بناءً على الجدول التالي:
+جاوب على السؤال التالي بناءً على الجدول التالي:
 
-                        {context}
+{context}
 
-                        السؤال: {user_question}
-                        """
+السؤال: {user_question}
+"""
 
-                        response = openai.ChatCompletion.create(
+                        client = OpenAI(
+                            api_key=st.secrets["OPENAI_API_KEY"] if "OPENAI_API_KEY" in st.secrets else os.getenv(
+                                "OPENAI_API_KEY"))
+                        response = client.chat.completions.create(
                             model="gpt-3.5-turbo",
-                            messages=[
-                                {"role": "system", "content": "أنت مساعد بيانات ذكي تحلل الجداول وتشرح النتائج بدقة"},
-                                {"role": "user", "content": prompt}
-                            ]
+                            messages=[{"role": "user", "content": prompt}]
                         )
-                        answer = response.choices[0].message.content
-                        st.markdown(f"**📌 الإجابة:**\n\n{answer}")
+                        st.success("📌 الإجابة:")
+                        st.markdown(response.choices[0].message.content)
                     except Exception as e:
                         st.error(f"❌ حدث خطأ في المساعد الذكي:\n\n{str(e)}")
 
         except Exception as e:
             st.error(f"❌ حدث خطأ أثناء معالجة البيانات: {str(e)}")
+
     else:
         st.warning("📌 الرجاء رفع ملف البيانات لبدء التحليل.")
+
 
 if __name__ == "__main__":
     main()
