@@ -1,12 +1,17 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from openai import OpenAI
 import os
+from openai import OpenAI
 from tabulate import tabulate
 
-# إعداد مفتاح OpenAI
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"] if "OPENAI_API_KEY" in st.secrets else os.getenv("OPENAI_API_KEY"))
+# إعداد مفتاح OpenAI بأمان
+api_key = st.secrets["OPENAI_API_KEY"] if "OPENAI_API_KEY" in st.secrets else os.getenv("OPENAI_API_KEY")
+if not api_key:
+    st.error("❌ لم يتم العثور على مفتاح API. تأكد من إضافته في secrets.toml أو كمتغير بيئة.")
+    st.stop()
+
+client = OpenAI(api_key=api_key)
 
 # --------- تسجيل الدخول ---------
 def show_login():
@@ -99,9 +104,8 @@ def main():
                     fig_freq = px.bar(freq_counts, x="Frequency", y="Count", color="Frequency", title="تكرار KPIs حسب Frequency")
                     st.plotly_chart(fig_freq, use_container_width=True)
 
-            # 🧠 مساعد الذكاء الاصطناعي:
             with st.expander("🧠 مساعد ذكي (GPT)"):
-                st.markdown("""**📌 اسأل عن البيانات بأي صيغة وسأجيب باستخدام الذكاء الاصطناعي 👇**""")
+                st.markdown("**📌 اسأل عن البيانات بأي صيغة وسأجيب باستخدام الذكاء الاصطناعي 👇**")
                 user_question = st.text_area("✍️ اكتب سؤالك هنا:")
 
                 if st.button("🔍 تحليل بالسؤال") and user_question:
@@ -113,19 +117,21 @@ def main():
                         response = client.chat.completions.create(
                             model="gpt-3.5-turbo",
                             messages=[
-                                {"role": "system", "content": "أنت مساعد ذكي متخصص في تحليل ملفات Excel والإجابة بدقة"},
-                                {"role": "user", "content": f"البيانات:
-{context}\n\nالسؤال:
-{user_question}"}
+                                {"role": "system", "content": "أنت مساعد ذكي متخصص في تحليل ملفات Excel"},
+                                {"role": "user", "content": f"""البيانات:
+{context}
+
+السؤال:
+{user_question}"""}
                             ]
                         )
                         st.success("📌 الإجابة:")
-                        st.write(response.choices[0].message.content)
+                        st.markdown(response.choices[0].message.content)
                     except Exception as e:
-                        st.error(f"❌ حدث خطأ في المساعد الذكي:\n\n{e}")
+                        st.error(f"❌ حدث خطأ في المساعد الذكي:\n{e}")
 
         except Exception as e:
-            st.error(f"❌ حدث خطأ أثناء معالجة البيانات: {str(e)}")
+            st.error(f"❌ حدث خطأ أثناء معالجة البيانات: {e}")
     else:
         st.warning("📌 الرجاء رفع ملف البيانات لبدء التحليل.")
 
